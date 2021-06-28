@@ -32,14 +32,7 @@ func getUserProfile() {
 
 func startHttpServer(addr string) {
 	mux := http.NewServeMux()
-	mux.Handle("/auth/callback", http.HandlerFunc(callbackHandler))
+	mux.Handle("/auth/callback", http.HandlerFunc(auth.CallbackHandler))
 	fmt.Println("http server listen on", addr)
 	http.ListenAndServe(addr, mux)
-}
-
-func callbackHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	code := r.Form["code"][0]
-	fmt.Fprintf(w, "Code: %s\n\n", code)
-	fmt.Fprint(w, "Select and Copy code above, and press to testing program")
 }

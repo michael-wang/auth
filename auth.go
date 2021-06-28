@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 
 	"golang.org/x/oauth2"
 )
@@ -62,4 +63,11 @@ func (a *Auth) GetUserProfile(code string) (*UserProfile, error) {
 		panic(err)
 	}
 	return user, nil
+}
+
+func CallbackHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	code := r.Form["code"][0]
+	fmt.Fprintf(w, "Code: %s\n\n", code)
+	fmt.Fprint(w, "Select and Copy code above, and press to testing program")
 }
