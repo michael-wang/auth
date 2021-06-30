@@ -9,37 +9,57 @@ import (
 
 	"github.com/golangcollege/sessions"
 	"github.com/michael-wang/auth"
+	"github.com/michael-wang/auth/providers"
+	"github.com/michael-wang/envar"
 )
 
 const (
-	// TODO get following values from env var
-	githubClientID     = "faf9d0195aed6907ee12"
-	githubClientSecret = "2e1e0b8b51d9dcb8c8ef9c7def16383632f20b23"
-	sessionSecret      = "YYIXn86jk3GiOGzP6gnI5G8VSZaDg+qo"
+	envPort               = "PORT"
+	envGithubClientID     = "GITHUB_CLIENT_ID"
+	envGithubClientSecret = "GITHUB_CLIENT_SECRET"
+	envSessionSecret      = "SESSION_SECRET"
 )
 
 var (
 	session *sessions.Session
 )
 
+func init() {
+	envar.Load()
+	envar.SetDef(envPort, 8080)
+	envar.SetDef(envSessionSecret, "YYIXn86jk3GiOGzP6gnI5G8VSZaDg+qo")
+}
+
 func main() {
 	flagPort := flag.Int("port", 8080, "port server listen on")
 	flag.Parse()
 
-	session := sessions.New([]byte(sessionSecret))
+	secret := envar.String(envSessionSecret)
+	session := sessions.New([]byte(secret))
 	session.Lifetime = 12 * time.Hour
 
-	// TODO use 'port' flag for redirect and after login URL.
-	a := auth.New(session, githubClientID, githubClientSecret, "http://localhost:8080/callback/github", "http://localhost:8080/")
+	github, err := providers.Github(
+		envGithubClientID,
+		envGithubClientSecret,
+		fmt.Sprintf("http://localhost:%d/callback/github", envar.Int(envPort)),
+	)
+	if err != nil {
+		panic(err)
+	}
+	auth.AddOAuth2Provider(
+		github,
+		session,
+		fmt.Sprintf("http://localhost:%d/", envar.Int(envPort)),
+	)
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.HandlerFunc(homeHandler))
-	mux.Handle("/login/github", a.LoginGithubHandler())
-	mux.Handle("/callback/github", a.OAuth2CallbackHandler())
+	mux.Handle("/login/github", auth.LoginGithubHandler())
+	mux.Handle("/callback/github", auth.CallbackHandler())
 
 	addr := fmt.Sprintf(":%d", *flagPort)
 	fmt.Println("http server listen on", addr)
-	err := http.ListenAndServe(addr, logger(session.Enable(mux)))
+	err = http.ListenAndServe(addr, logger(session.Enable(mux)))
 	if err != nil {
 		panic(err)
 	}

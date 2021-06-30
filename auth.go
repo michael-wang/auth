@@ -30,6 +30,10 @@ const (
 	LoginToken = "token"
 )
 
+var (
+	defaultAuth = &Auth{}
+)
+
 func New(session *sessions.Session,
 	clientID, clientSecret, callbackURL, afterLoginURL string) *Auth {
 	return &Auth{
@@ -46,6 +50,26 @@ func New(session *sessions.Session,
 		session:       session,
 		afterLoginURL: afterLoginURL,
 	}
+}
+
+// AddOAuth2Provider replace default auth with new provider built from cfg.
+// TODO support multiple providers.
+func AddOAuth2Provider(cfg *oauth2.Config, session *sessions.Session,
+	afterLoginURL string) error {
+	defaultAuth = &Auth{
+		config:        cfg,
+		session:       session,
+		afterLoginURL: afterLoginURL,
+	}
+	return nil
+}
+
+func LoginGithubHandler() http.Handler {
+	return defaultAuth.LoginGithubHandler()
+}
+
+func CallbackHandler() http.Handler {
+	return defaultAuth.OAuth2CallbackHandler()
 }
 
 func (a *Auth) LoginGithubHandler() http.Handler {
